@@ -1,0 +1,100 @@
+---
+- name: Install and configure ELK stack on RHEL
+  hosts: all
+  become: yes
+  vars:
+    elasticsearch_version: "8.0.0"  # Adjust as needed
+    logstash_version: "8.0.0"        # Adjust as needed
+    kibana_version: "8.0.0"          # Adjust as needed
+    elastic_repo_url: "https://artifacts.elastic.co/packages/{{ elasticsearch_version }}/yum"
+    kibana_config:
+      server.host: "0.0.0.0"
+      elasticsearch.hosts: ["http://localhost:9200"]
+    logstash_config:
+      path.config: "/etc/logstash/conf.d"
+
+  tasks:
+    - name: Install dependencies
+      ansible.builtin.yum:
+        name:
+          - wget
+          - java-11-openjdk
+        state: present
+
+    - name: Add Elastic repository
+      ansible.builtin.yum_repository:
+        name: elastic
+        description: Elastic repository for Elasticsearch and Logstash
+        baseurl: "{{ elastic_repo_url }}"
+        gpgkey: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        enabled: yes
+
+    - name: Install Elasticsearch
+      ansible.builtin.yum:
+        name: elasticsearch-{{ elasticsearch_version }}
+        state: present
+
+    - name: Install Logstash
+      ansible.builtin.yum:
+        name: logstash-{{ logstash_version }}
+        state: present
+
+    - name: Install Kibana
+      ansible.builtin.yum:
+        name: kibana-{{ kibana_version }}
+        state: present
+
+    - name: Configure Elasticsearch
+      ansible.builtin.template:
+        src: elasticsearch.yml.j2
+        dest: /etc/elasticsearch/elasticsearch.yml
+      notify:
+        - restart elasticsearch
+
+    - name: Configure Logstash
+      ansible.builtin.template:
+        src: logstash.conf.j2
+        dest: /etc/logstash/conf.d/logstash.conf
+      notify:
+        - restart logstash
+
+    - name: Configure Kibana
+      ansible.builtin.template:
+        src: kibana.yml.j2
+        dest: /etc/kibana/kibana.yml
+      notify:
+        - restart kibana
+
+    - name: Start and enable Elasticsearch service
+      ansible.builtin.systemd:
+        name: elasticsearch
+        state: started
+        enabled: yes
+
+    - name: Start and enable Logstash service
+      ansible.builtin.systemd:
+        name: logstash
+        state: started
+        enabled: yes
+
+    - name: Start and enable Kibana service
+      ansible.builtin.systemd:
+        name: kibana
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart elasticsearch
+      ansible.builtin.systemd:
+        name: elasticsearch
+        state: restarted
+
+    - name: restart logstash
+      ansible.builtin.systemd:
+        name: logstash
+        state: restarted
+
+    - name: restart kibana
+      ansible.builtin.systemd:
+        name: kibana
+        state: restarted

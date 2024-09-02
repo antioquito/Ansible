@@ -1,0 +1,31 @@
+---
+- name: Change NTP server on RHEL
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ensure chrony is installed
+      ansible.builtin.yum:
+        name: chrony
+        state: present
+
+    - name: Backup current chrony configuration
+      ansible.builtin.copy:
+        src: /etc/chrony.conf
+        dest: /etc/chrony.conf.bak
+        backup: yes
+
+    - name: Update NTP server in chrony configuration
+      ansible.builtin.lineinfile:
+        path: /etc/chrony.conf
+        regexp: '^server '
+        line: 'server {{ ntp_server }} iburst'
+        state: present
+      vars:
+        ntp_server: '0.centos.pool.ntp.org'  # Replace with your desired NTP server
+
+    - name: Restart chronyd service
+      ansible.builtin.systemd:
+        name: chronyd
+        state: restarted
+        enabled: yes
+
