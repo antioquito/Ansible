@@ -1,0 +1,54 @@
+---
+- name: Install LAMP stack
+  hosts: your_ec2_instance
+  become: true
+  vars:
+    mysql_root_password: your_mysql_root_password
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Apache web server
+      apt:
+        name: apache2
+        state: present
+
+    - name: Install MySQL server
+      apt:
+        name: mysql-server
+        state: present
+
+    - name: Secure MySQL installation (optional)
+      expect:
+        command: mysql_secure_installation
+        responses:
+          'Enter current password for root (enter for none):': ''
+          'Set root password?': 'y'
+          'New password:': "{{ mysql_root_password }}"
+          'Re-enter new password:': "{{ mysql_root_password }}"
+          'Remove anonymous users?': 'y'
+          'Disallow root login remotely?': 'y'
+          'Remove test database and access to it?': 'y'
+          'Reload privilege tables now?': 'y'
+
+    - name: Install PHP and required modules
+      apt:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - php
+        - libapache2-mod-php
+        - php-mysql
+        - php-cli
+
+    - name: Ensure Apache mod_rewrite is enabled
+      apache2_module:
+        name: rewrite
+        state: present
+
+    - name: Restart Apache service
+      service:
+        name: apache2
+        state: restarted
