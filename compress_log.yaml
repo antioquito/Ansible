@@ -1,0 +1,29 @@
+---
+- name: Compress log files on RHEL
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ensure gzip is installed
+      ansible.builtin.yum:
+        name: gzip
+        state: present
+
+    - name: Compress all log files in /var/log
+      ansible.builtin.command:
+        cmd: gzip /var/log/*.log
+      args:
+        removes: /var/log/*.gz
+
+    - name: Verify log files were compressed
+      ansible.builtin.shell: |
+        if ls /var/log/*.gz 1> /dev/null 2>&1; then
+          echo "Compression successful"
+        else
+          echo "Compression failed"
+        fi
+      register: compression_status
+
+    - name: Print compression status
+      ansible.builtin.debug:
+        msg: "{{ compression_status.stdout }}"
+
